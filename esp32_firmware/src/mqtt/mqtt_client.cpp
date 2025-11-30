@@ -1,0 +1,99 @@
+#include "mqtt_client.h"
+#include "../secrets.h"
+#include "../config.h"
+#include <WiFiClient.h>
+#include <PubSubClient.h>
+
+static WiFiClient espClient;
+static PubSubClient client(espClient);
+
+static void handleCommand(char* topic, byte* payload, unsigned int length);
+
+void mqtt_init() {
+  client.setServer(MQTT_BROKER, MQTT_PORT);
+  client.setCallback(handleCommand);
+}
+
+bool mqtt_connected() {
+  return client.connected();
+}
+
+static void mqtt_reconnect_if_needed() {
+  if (client.connected()) return;
+  static unsigned long lastAttempt = 0;
+  if (millis() - lastAttempt < 5000) return;
+  lastAttempt = millis();
+  Serial.println("MQTT: connecting...");
+  String clientId = String(DEVICE_ID) + "-" + String(random(0xffff), HEX);
+  if (client.connect(clientId.c_str(), MQTT_USER, MQTT_PASSWORD)) {
+    Serial.println("MQTT: connected");
+    client.subscribe(MQTT_CMD_TOPIC);
+    // send initial status
+    mqtt_send_status("online");
+  } else {
+    Serial.printf("MQTT: failed rc=%d\n", client.state());
+  }
+}
+
+void mqtt_loop() {
+  mqtt_reconnect_if_needed();
+  if (client.connected()) {
+    client.loop();
+  }
+}
+
+void mqtt_publish_telemetry(const String &payload) {
+  if (client.connected()) {
+    client.publish(MQTT_TELEMETRY_TOPIC, payload.c_str());
+  }
+}
+
+void mqtt_send_status(const String &status) {
+  if (client.connected()) {
+    String m = "{\"device\":\"" DEVICE_ID "\",\"status\":\"" + status + "\"}";
+    client.publish(MQTT_STATUS_TOPIC, m.c_str(), true); // retained
+  }
+}
+
+/* Command payloads (JSON) e.g.
+{
+  "cmd": "led_on",
+  "duration_ms": 5000
+}
+*/
+#include <ArduinoJson.h>
+void handleCommand(char* topic, byte* payload, unsigned int length) {
+  Serial.printf("MQTT: got msg on %s\n", topic);
+  DynamicJsonDocument doc(256);
+  DeserializationError err = deserializeJson(doc, payload, length);
+  if (err) {
+    Serial.println("MQTT: invalid json");
+    return;
+  }
+  const char *cmd = doc["cmd"];
+  if (!cmd) return;
+  String s = String(cmd);
+  if (s == "led_on") {
+    int dur = doc["duration_ms"] | 0;
+    // publish event to actuator (use external function via extern)
+    extern void actuator_led_set(bool on, uint32_t duration_ms);
+    actuator_led_set(true, dur);
+  } else if (s == "led_off") {
+    extern void actuator_led_set(bool on, uint32_t duration_ms);
+    actuator_led_set(false, 0);
+  } else if (s == "siren_on") {
+    int dur = doc["duration_ms"] | 0;
+    extern void actuator_buzzer_set(bool on, uint32_t duration_ms);
+    actuator_buzzer_set(true, dur);
+  } else if (s == "siren_off") {
+    extern void actuator_buzzer_set(bool on, uint32_t duration_ms);
+    actuator_buzzer_set(false, 0);
+  } else if (s == "get_status") {
+    mqtt_send_status("online");
+  } else if (s == String("set_sound_threshold")) {
+    int thr = doc["value"] | DEFAULT_SOUND_THRESHOLD;
+    extern void sensors_set_sound_threshold(int v);
+    sensors_set_sound_threshold(thr);
+    mqtt_send_status(String("sound_thr_set:") + String(thr));
+  }
+}
