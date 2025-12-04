@@ -3,9 +3,9 @@
 #include "../mqtt/mqtt_client.h"
 
 static bool led_state = false;
-static bool buzzer_state = false;
+//static bool buzzer_state = false;
 static unsigned long led_until = 0;
-static unsigned long buzzer_until = 0;
+//static unsigned long buzzer_until = 0;
 
 void actuator_init() {
   pinMode(LED_GATE_PIN, OUTPUT);

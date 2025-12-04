@@ -17,3 +17,11 @@ void wifi_init() {
 bool wifi_connected() {
   return WiFi.status() == WL_CONNECTED;
 }
+
+void wifi_reconnect() {
+    if (WiFi.status() != WL_CONNECTED) {
+        WiFi.disconnect();
+        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    }
+}
+
