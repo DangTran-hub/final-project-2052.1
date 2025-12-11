@@ -23,7 +23,7 @@ static void i2s_init_for_inmp441() {
     .sample_rate = 16000,
     .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
     .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-    .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S_MSB),
+    .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_STAND_I2S),
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
     .dma_buf_count = 4,
     .dma_buf_len = 256,
@@ -59,6 +59,7 @@ int sensors_get_sound_level() {
   // each sample 32-bit, left-aligned signed 24-bit typically
   int32_t *samples = (int32_t*)i2s_read_buf;
   int sample_count = bytes_read / 4;
+  if(sample_count <= 0) return 0;
   double sumsq = 0;
   for (int i = 0; i < sample_count; ++i) {
     int32_t s = samples[i] >> 8; // shift to 24->16 bits

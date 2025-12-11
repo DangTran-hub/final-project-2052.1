@@ -1,15 +1,17 @@
 #include "mqtt_client.h"
 #include "../secrets.h"
 #include "../config.h"
-#include <WiFiClient.h>
+#include "../certificate.h"
+#include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 
-static WiFiClient espClient;
-static PubSubClient client(espClient);
+static WiFiClientSecure espClientSecure;
+static PubSubClient client(espClientSecure);
 
 static void handleCommand(char* topic, byte* payload, unsigned int length);
 
 void mqtt_init() {
+  espClientSecure.setCACert(EMQX_CA_CERTIFICATE);
   client.setServer(MQTT_BROKER, MQTT_PORT);
   client.setCallback(handleCommand);
 }
@@ -25,10 +27,34 @@ static void mqtt_reconnect_if_needed() {
   lastAttempt = millis();
   Serial.println("MQTT: connecting...");
   String clientId = String(DEVICE_ID) + "-" + String(random(0xffff), HEX);
-  if (client.connect(clientId.c_str(), MQTT_USER, MQTT_PASSWORD)) {
+  // if (client.connect(clientId.c_str(), MQTT_USER, MQTT_PASSWORD)) {
+  //   Serial.println("MQTT: connected");
+  //   client.subscribe(MQTT_CMD_TOPIC);
+  //   // send initial status
+  //   mqtt_send_status("online");
+  // } else {
+  //   Serial.printf("MQTT: failed rc=%d\n", client.state());
+  // }
+
+  String willPayload = "{\"device\":\"" DEVICE_ID "\",\"status\":\"offline\"}";
+  bool ok = client.connect(
+      clientId.c_str(),
+      MQTT_USER,
+      MQTT_PASSWORD,
+      MQTT_STATUS_TOPIC,
+      1,
+      true,
+      willPayload.c_str()
+  );
+
+  if (ok) {
     Serial.println("MQTT: connected");
-    client.subscribe(MQTT_CMD_TOPIC);
-    // send initial status
+
+    // Subscribe correct topic
+    String cmdTopic = String("devices/") + DEVICE_ID + "/command";
+    client.subscribe(cmdTopic.c_str(), 1);
+
+    // Send initial status
     mqtt_send_status("online");
   } else {
     Serial.printf("MQTT: failed rc=%d\n", client.state());
@@ -64,7 +90,7 @@ void mqtt_send_status(const String &status) {
 #include <ArduinoJson.h>
 void handleCommand(char* topic, byte* payload, unsigned int length) {
   Serial.printf("MQTT: got msg on %s\n", topic);
-  DynamicJsonDocument doc(256);
+  JsonDocument doc;
   DeserializationError err = deserializeJson(doc, payload, length);
   if (err) {
     Serial.println("MQTT: invalid json");
