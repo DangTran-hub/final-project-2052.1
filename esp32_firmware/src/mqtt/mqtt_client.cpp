@@ -50,10 +50,8 @@ static void mqtt_reconnect_if_needed() {
   if (ok) {
     Serial.println("MQTT: connected");
 
-    // Subscribe correct topic
-    String cmdTopic = String("devices/") + DEVICE_ID + "/command";
-    client.subscribe(cmdTopic.c_str(), 1);
-
+    // Subscribe to command topic from config.h
+    client.subscribe(MQTT_CMD_TOPIC, 1);
     // Send initial status
     mqtt_send_status("online");
   } else {
