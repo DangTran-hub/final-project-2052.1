@@ -4,8 +4,8 @@
 
 #pragma once
 
-#define WIFI_SSID     "your_SSID"
-#define WIFI_PASSWORD "your_PASSWORD"
+#define WIFI_SSID     "MinhDat"
+#define WIFI_PASSWORD "1461040148"
 
 // Sử dụng MQTT Cloud để nhận thông tin dịch vụ
 #define MQTT_BROKER   "v107ddd8.ala.asia-southeast1.emqxsl.com" // hoặc IP

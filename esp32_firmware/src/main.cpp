@@ -32,6 +32,17 @@ void loop() {
     }
   } else {
     mqtt_loop();
+
+#if ENABLE_FAKE_PUBLISH
+    static unsigned long lastFakePublish = 0;
+    unsigned long now = millis();
+    if (now - lastFakePublish > FAKE_PUBLISH_INTERVAL_MS) {
+      if (mqtt_connected()) {
+        mqtt_publish_fake_packet();
+      }
+      lastFakePublish = now;
+    }
+#endif
   }
   sensors_loop();
   actuator_loop();

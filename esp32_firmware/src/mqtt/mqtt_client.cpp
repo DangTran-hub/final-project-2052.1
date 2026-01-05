@@ -79,6 +79,15 @@ void mqtt_send_status(const String &status) {
   }
 }
 
+// Testing: publish a fake telemetry packet to the telemetry topic
+void mqtt_publish_fake_packet() {
+  if (!client.connected()) return;
+  // Create a simple fake telemetry JSON payload
+  String payload = "{\"device\":\"" DEVICE_ID "\",\"ts\":" + String(millis()) + ",\"type\":\"telemetry\",\"battery\":92,\"motion\":false,\"sound_level\":" + String(random(10,100)) + "}";
+  client.publish(MQTT_TELEMETRY_TOPIC, payload.c_str());
+  Serial.printf("MQTT: sent fake packet: %s\n", payload.c_str());
+}
+
 /* Command payloads (JSON) e.g.
 {
   "cmd": "led_on",

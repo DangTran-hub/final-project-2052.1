@@ -26,3 +26,7 @@
 #define MQTT_TELEMETRY_TOPIC    MQTT_BASE_TOPIC "/telemetry"
 #define MQTT_CMD_TOPIC          MQTT_BASE_TOPIC "/cmd"
 #define MQTT_STATUS_TOPIC       MQTT_BASE_TOPIC "/status"
+
+// Testing: enable periodic fake telemetry publish (set to 0 to disable)
+#define ENABLE_FAKE_PUBLISH 0
+#define FAKE_PUBLISH_INTERVAL_MS 10000  // 10 seconds
